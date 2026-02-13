@@ -46,11 +46,10 @@ const SocialButton = () => {
             <i className='transform hover:scale-125 duration-150 fab fa-github dark:hover:text-indigo-400 hover:text-indigo-600' />
           </a>
         )}
-
-        {/* X (Twitter) - 已更新为最新图标 */}
+       {/* X (Twitter) - 使用兼容性更好的类名 */}
         {CONTACT_TWITTER && (
           <a target='_blank' rel='noreferrer' title={'X'} href={CONTACT_TWITTER}>
-            <i className='transform hover:scale-125 duration-150 fab fa-x-twitter dark:hover:text-indigo-400 hover:text-indigo-600' />
+            <i className='transform hover:scale-125 duration-150 fab fa-twitter dark:hover:text-indigo-400 hover:text-indigo-600' />
           </a>
         )}
 
