@@ -1,6 +1,6 @@
 import { BeiAnGongAn } from '@/components/BeiAnGongAn'
 import BeiAnSite from '@/components/BeiAnSite'
-import PoweredBy from '@/components/PoweredBy'
+// import PoweredBy from '@/components/PoweredBy'  <-- 我把这行删了，去除了引用
 import { siteConfig } from '@/lib/config'
 
 const Footer = ({ title }) => {
@@ -35,7 +35,12 @@ const Footer = ({ title }) => {
         <h1 className='text-xs pt-4 text-light-400 dark:text-gray-400'>
           {title} {siteConfig('BIO') && <>|</>} {siteConfig('BIO')}
         </h1>
-        <PoweredBy className='justify-center' />
+        
+        {/* 下面这行就是你要的自定义签名，替代了原来的 PoweredBy */}
+        <p className='text-xs mt-2 text-gray-500 dark:text-gray-400'>
+           Built for Anti-Entropy 
+        </p>
+
       </span>
       <br />
     </footer>
