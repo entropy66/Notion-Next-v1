@@ -7,6 +7,117 @@ import dynamic from 'next/dynamic'
 import { useEffect, useRef } from 'react'
 import { NotionRenderer } from 'react-notion-x'
 
+function sanitizeRecordMap(recordMap) {
+  if (!recordMap?.block || typeof recordMap.block !== 'object') {
+    return recordMap
+  }
+
+  const block = recordMap.block
+  const toIdVariants = id => {
+    if (typeof id !== 'string' || !id || id === 'undefined' || id === 'null') {
+      return []
+    }
+
+    const compact = id.replace(/-/g, '')
+    const variants = new Set([id, compact])
+    if (/^[0-9a-fA-F]{32}$/.test(compact)) {
+      variants.add(
+        `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`
+      )
+    }
+    return [...variants]
+  }
+
+  const resolveKeyById = new Map()
+
+  const sanitizedBlock = {}
+  for (const id of Object.keys(block)) {
+    const blockItem = block[id]
+    if (!blockItem || typeof blockItem !== 'object') {
+      continue
+    }
+
+    const value = blockItem?.value
+    if (!value || typeof value !== 'object') {
+      continue
+    }
+
+    // 无权限 block（role:none）不参与渲染，避免 react-notion-x 访问非法 id
+    if (value.role === 'none') {
+      continue
+    }
+
+    const normalizedValueId =
+      typeof value.id === 'string' && value.id && value.id !== 'undefined'
+        ? value.id
+        : id
+
+    sanitizedBlock[id] = {
+      ...blockItem,
+      value: {
+        ...value,
+        id: normalizedValueId
+      }
+    }
+
+    const variants = [...toIdVariants(id), ...toIdVariants(normalizedValueId)]
+    variants.forEach(variant => {
+      resolveKeyById.set(variant, id)
+    })
+  }
+
+  const normalizeRefId = ref => {
+    const rawId =
+      typeof ref === 'string'
+        ? ref
+        : ref && typeof ref === 'object'
+          ? ref?.value?.id || ref?.id || null
+          : null
+
+    if (typeof rawId !== 'string' || !rawId) {
+      return null
+    }
+
+    for (const variant of toIdVariants(rawId)) {
+      const resolved = resolveKeyById.get(variant)
+      if (resolved) {
+        return resolved
+      }
+    }
+    return null
+  }
+
+  const sanitizeIdList = ids => {
+    if (!Array.isArray(ids)) {
+      return ids
+    }
+    return ids
+      .map(normalizeRefId)
+      .filter(Boolean)
+  }
+
+  for (const [id, blockItem] of Object.entries(sanitizedBlock)) {
+    const value = blockItem?.value
+    if (!value || typeof value !== 'object') {
+      continue
+    }
+
+    sanitizedBlock[id] = {
+      ...blockItem,
+      value: {
+        ...value,
+        content: sanitizeIdList(value.content),
+        children: sanitizeIdList(value.children)
+      }
+    }
+  }
+
+  return {
+    ...recordMap,
+    block: sanitizedBlock
+  }
+}
+
 /**
  * 整个站点的核心组件
  * 将Notion数据渲染成网页
@@ -118,13 +229,14 @@ const NotionPage = ({ post, className }) => {
 
   // const cleanBlockMap = cleanBlocksWithWarn(post?.blockMap);
   // console.log('NotionPage render with post:', post);
+  const safeRecordMap = sanitizeRecordMap(post?.blockMap)
 
   return (
     <div
       id='notion-article'
       className={`mx-auto overflow-hidden ${className || ''}`}>
       <NotionRenderer
-        recordMap={post?.blockMap}
+        recordMap={safeRecordMap}
         mapPageUrl={mapPageUrl}
         mapImageUrl={mapImgUrl}
         components={{
@@ -204,6 +316,9 @@ const autoScrollToHash = () => {
  */
 const mapPageUrl = id => {
   // return 'https://www.notion.so/' + id.replace(/-/g, '')
+  if (typeof id !== 'string' || !id) {
+    return '/'
+  }
   return '/' + id.replace(/-/g, '')
 }
 
